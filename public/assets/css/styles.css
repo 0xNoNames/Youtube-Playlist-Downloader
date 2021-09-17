@@ -1,0 +1,137 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  outline: none;
+  white-space: nowrap;
+  /* -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none; */
+}
+
+body {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  text-align: center;
+  color: white;
+  font-family: "Roboto", sans-serif;
+  background: linear-gradient(-45deg, #ffa033, #ff5353, #9c51ff);
+  background-size: 300% 300%;
+  animation: gradient 50s ease infinite;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#urlInput {
+  border: none;
+  padding: 12.5px;
+  width: 500px;
+  text-align: center;
+  border-radius: 10px;
+  font-size: 1.1em;
+  background: rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 25px 5px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  color: white;
+}
+#urlInput::placeholder {
+  color: white;
+}
+
+#errorMessage {
+  position: absolute;
+  top: 10%;
+  left: 50%;
+  transform: translate(-50%, 10%);
+  color: rgb(255, 255, 0);
+  font-size: 1em;
+}
+
+#infoMessage {
+  position: absolute;
+  top: 90%;
+  left: 50%;
+  transform: translate(-50%, 10%);
+  color: rgb(0, 255, 0);
+  font-size: 1em;
+}
+
+img {
+  height: 200px;
+  border: none;
+}
+
+/* -- -- -- -- -- -- -- -- -- -- -- -- SCROLLBAR -- -- -- -- -- -- -- -- -- -- -- -- */
+
+::-webkit-scrollbar {
+  width: 10px;
+  background-color: transparent;
+}
+
+::-webkit-scrollbar-track {
+  -webkit-box-shadow: inset 0 0 10px 10px rgba(255, 255, 255, 0.3);
+  box-shadow: inset 0 0 10px 10px rgba(255, 255, 255, 0.3);
+  border: solid 3px transparent;
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb {
+  -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
+  background-color: white;
+  border-radius: 5px;
+}
+
+/* -- -- -- -- -- -- -- -- -- -- -- -- KEYFRAMES -- -- -- -- -- -- -- -- -- -- -- -- */
+
+@-webkit-keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* 
+button {
+  margin-top: 33%;
+  padding: 25px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.1em;
+  background: rgba(0, 0, 0, 0.25);
+  box-shadow: 0 0 25px 5px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  color: white;
+}
+
+button:hover {
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0 25px 5px rgba(0, 0, 0, 0.15); */
+
+/* } */
