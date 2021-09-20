@@ -41,30 +41,46 @@ body {
   -webkit-backdrop-filter: blur(25px);
   color: white;
 }
+
 #urlInput::placeholder {
   color: white;
 }
 
 #errorMessage {
   position: absolute;
-  top: 10%;
+  top: 5%;
   left: 50%;
-  transform: translate(-50%, 10%);
+  transform: translate(-50%, -5%);
   color: rgb(255, 255, 0);
   font-size: 1em;
 }
 
 #infoMessage {
   position: absolute;
-  top: 90%;
+  top: 95%;
   left: 50%;
-  transform: translate(-50%, 10%);
+  transform: translate(-50%, -95%);
   color: rgb(0, 255, 0);
   font-size: 1em;
 }
 
+#updateMessage {
+  position: absolute;
+  color: rgba(255, 255, 255, 0.5);
+  top: 60%;
+  left: 50%;
+  transform: translate(-50%, -60%);
+}
+
+#loadingImg {
+  position: absolute;
+  top: 70%;
+  left: 50%;
+  transform: translate(-50%, -70%);
+}
+
 img {
-  height: 200px;
+  height: 15px;
   border: none;
 }
 
