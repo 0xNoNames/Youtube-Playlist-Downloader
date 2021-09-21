@@ -10,4 +10,5 @@ const validateYTUri = (uri) => {
     return true;
 };
 
-module.exports.validateYTUri = validateYTUri;
+
+module.exports = { validateYTUri };

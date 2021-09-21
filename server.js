@@ -1,5 +1,4 @@
 ﻿"use strict";
-// const utils = require('./utils.js');
 const express = require("express");
 const app = express();
 const httpServer = require("http").createServer(app);
@@ -11,13 +10,16 @@ const fs = require("fs");
 
 const youtube_info = require("ytdl-core");
 const youtube_playlist = require("ytpl");
-// const youtube_downloader_image = require("image-downloader");
 
 const mp3_dl = require("youtube-mp3-downloader");
 const downloader_audio = new mp3_dl({
   ffmpegPath: "/usr/local/Cellar/ffmpeg/4.4_2/bin/ffmpeg",
   youtubeVideoQuality: "highestaudio",
+  "progressTimeout": 250,
+  "queueParallelism": 10
 });
+
+var cpt_playlist;
 
 /////////////////////////////////////////////////
 
@@ -47,81 +49,61 @@ io.on("connection", (socket) => {
   socket.on("url", (msg) => {
     let url = decodeURI(encodeURI(msg));
 
-    try {
-      youtube_info.getURLVideoID(url);
+    if (youtube_info.validateURL(url)) {
+      var id = youtube_info.getURLVideoID(url)
 
-      if (url.includes("playlist")) {
-        youtube_playlist(url)
-          .then((data) => {
-            socket.emit(
-              "info",
-              "Il y a " + data.estimatedItemCount + " musiques."
-            );
-            data.items.forEach((video) => {
-              if (video.durationSec <= 600) telechargerFichier(id, res);
-              else throw RangeError();
-            });
-          })
+      // Si la vidéo vient d'une playlist, on enlève les caractères en trop de l'id.
+      // if (id.includes("&")) id = id.slice(0, id.indexOf("&"));
 
-        // Si l'url est une vidéo.
-      } else {
-        var id = youtube_info.getURLVideoID(url)
+      socket.emit("info", "Il y a 1 musique");
+      socket.emit("gif-on");
 
-        // Si la vidéo vient d'une playlist, on enlève les caractères en trop de l'id.
-        // if (id.includes("&")) id = id.slice(0, id.indexOf("&"));
-
-        socket.emit("info", "Il n'y a qu'une seule musique, téléchargement de celle-ci...");
-        socket.emit("gif-on");
-
-        youtube_info.getBasicInfo(id).then((data) => {
-          if (data.videoDetails.lengthSeconds <= 600)
-            telechargerFichier(id, socket);
-          else {
-            socket.emit("erreur", "Vidéo trop longue, max 10mn.");
-            console.error("Vidéo trop longue");
-            socket.emit("gif-off");
-          }
-        });
-      }
-    } catch (error) {
-      console.log(error);
-      switch (error.constructor) {
-        case TypeError:
+      youtube_info.getBasicInfo(id).then((data) => {
+        if (data.videoDetails.lengthSeconds <= 600)
+          telechargerFichier(id, socket);
+        else {
+          socket.emit("erreur", "Vidéo trop longue, max 10mn");
+          console.error("Vidéo trop longue");
+          socket.emit("gif-off");
+        }
+      });
+    } else if (url.includes("playlist")) {
+      youtube_playlist(url)
+        .then((data) => {
           socket.emit(
-            "erreur",
-            "Mauvais lien frérot (playlist ou vidéo youtube seulement)."
+            "info",
+            "Il reste " + data.estimatedItemCount + " musiques"
           );
-          console.error("marche pas" + error)
-          break;
+          socket.emit("gif-on");
 
-        // case RangeError:
-        //   socket.emit("erreur", "Vidéo trop longue, max 10mn.");
-        //   console.error("Vidéo trop longue");
-        //   break;
+          cpt_playlist = data.estimatedItemCount * data.estimatedItemCount - data.estimatedItemCount;
 
-        default:
-          break;
-      }
+          data.items.forEach((video) => {
+            console.log(video.title);
+            if (video.durationSec <= 600) {
+              telechargerFichier(video.id, socket, data.estimatedItemCount);
+            }
+            else {
+              socket.emit("erreur", "Vidéo trop longue, max 10mn");
+              console.error("Vidéo trop longue");
+              socket.emit("gif-off");
+            }
+          });
+        })
+    }
+    else {
+      socket.emit("erreur", "Mauvais lien");
+      console.error("Mauvais lien");
       socket.emit("gif-off");
     }
   });
 });
 
-function telechargerFichier(id, socket) {
+
+
+const telechargerFichier = (id, socket, nombre) => {
   fs.mkdirSync(`private/${socket.id}`, { recursive: true });
   downloader_audio.outputPath = `private/${socket.id}`;
-
-  // Télécharge le thumbnail.
-  // let image_options = {
-  //   url: "https://img.youtube.com/vi/" + id + "/hqdefault.jpg",
-  //   dest: "private/" + socket.id + "/" + id + ".jpg",
-  // };
-  // youtube_downloader_image
-  //   .image(image_options)
-  //   .then(({ filename }) => {
-  //     console.log("Image sauvegardée : ", filename);
-  //   })
-  //   .catch((err) => console.error(err));
 
   // Télécharge la vidéo.
   downloader_audio.download(id);
@@ -132,8 +114,15 @@ function telechargerFichier(id, socket) {
     // var img = Buffer.from(data).toString("base64");
     // socket.emit("miniature", "data:image/png;base64," + img);
     console.log("finished : ", data.videoTitle);
+
+    cpt_playlist--;
+
+    socket.emit("info", "il reste " + cpt_playlist/nombre + " musiques")
     socket.emit("dl-update", data.videoTitle)
-    socket.emit("gif-off");
+
+    console.log(cpt_playlist);
+
+    if (cpt_playlist == 0) socket.emit("gif-off");
   });
 
   downloader_audio.on("progress", (progress) => {
@@ -148,5 +137,6 @@ function telechargerFichier(id, socket) {
     socket.emit("gif-off");
   });
 }
+
 
 app.get("/telecharger", (req, res) => res.download("./file.pdf"));
