@@ -1,16 +1,20 @@
 ﻿"use strict";
+
+// -- -- -- -- -- -- -- -- --  IMPORTS  -- -- -- -- -- -- -- -- -- \\
+
 const express = require("express");
 const app = express();
 const httpServer = require("http").createServer(app);
-const cors = require("cors");
-
 const io = require("socket.io")(httpServer);
+const cors = require("cors");
 
 const fs = require("fs");
 
+const archiver = require("archiver");
+
 const youtube_info = require("ytdl-core");
 const youtube_playlist = require("ytpl");
-
+const downloader_image = require("image-downloader");
 const mp3_dl = require("youtube-mp3-downloader");
 const downloader_audio = new mp3_dl({
   ffmpegPath: "/usr/local/Cellar/ffmpeg/4.4_2/bin/ffmpeg",
@@ -19,9 +23,7 @@ const downloader_audio = new mp3_dl({
   "queueParallelism": 10
 });
 
-var cpt_playlist;
-
-/////////////////////////////////////////////////
+// -- -- -- -- -- -- -- -- --  DEMARRAGE SERVEUR  -- -- -- -- -- -- -- -- -- \\
 
 app.use(cors());
 
@@ -31,19 +33,22 @@ httpServer.listen(8003, () => {
   console.log("Serveur en écoute sur le port 8003");
 });
 
-/////////////////////////////////////////////////
+// -- -- -- -- -- -- -- -- --  ROUTING  -- -- -- -- -- -- -- -- -- \\
 
 app.get("/", (req, res) => {
   res.sendFile(__dirname + "/public/index.html");
 });
 
-/////////////////////////////////////////////////
+// -- -- -- -- -- -- -- -- --  SOCKETS  -- -- -- -- -- -- -- -- -- \\
 
 io.on("connection", (socket) => {
+  socket.ready = true;
   socket.on("disconnect", function () {
     console.log(socket.id + " disconnected.");
     if (fs.existsSync(`private/${socket.id}`))
       fs.rmSync(`private/${socket.id}`, { recursive: true });
+    if (fs.existsSync(`private/${socket.id}.zip`, { recursive: true }))
+      fs.rmSync(`private/${req.query.id}.zip`, { recursive: true });
   });
 
   socket.on("url", (msg) => {
@@ -52,15 +57,11 @@ io.on("connection", (socket) => {
     if (youtube_info.validateURL(url)) {
       var id = youtube_info.getURLVideoID(url)
 
-      // Si la vidéo vient d'une playlist, on enlève les caractères en trop de l'id.
-      // if (id.includes("&")) id = id.slice(0, id.indexOf("&"));
-
-      socket.emit("info", "Il y a 1 musique");
       socket.emit("gif-on");
 
       youtube_info.getBasicInfo(id).then((data) => {
         if (data.videoDetails.lengthSeconds <= 600)
-          telechargerFichier(id, socket);
+          telechargerFichier(id, data.videoDetails.title, socket);
         else {
           socket.emit("erreur", "Vidéo trop longue, max 10mn");
           console.error("Vidéo trop longue");
@@ -68,63 +69,85 @@ io.on("connection", (socket) => {
         }
       });
     } else if (url.includes("playlist")) {
-      youtube_playlist(url)
-        .then((data) => {
-          socket.emit(
-            "info",
-            "Il reste " + data.estimatedItemCount + " musiques"
-          );
-          socket.emit("gif-on");
-
-          cpt_playlist = data.estimatedItemCount * data.estimatedItemCount - data.estimatedItemCount;
-
-          data.items.forEach((video) => {
-            console.log(video.title);
-            if (video.durationSec <= 600) {
-              telechargerFichier(video.id, socket, data.estimatedItemCount);
-            }
-            else {
-              socket.emit("erreur", "Vidéo trop longue, max 10mn");
-              console.error("Vidéo trop longue");
-              socket.emit("gif-off");
-            }
-          });
-        })
-    }
-    else {
+      const tes = youtube_playlist(url);
+      tes.then((data) => {
+        socket.emit("gif-on");
+        data.items.forEach((video) => {
+          if (video.durationSec <= 600)
+            telechargerFichier(video.id, video.title, socket);
+          else {
+            socket.emit("erreur", "Vidéo trop longue, max 10mn");
+            console.error("Vidéo trop longue");
+            socket.emit("gif-off");
+          }
+        });
+      }, () => {
+        socket.emit("erreur", "Playlist privée ou n'existant pas");
+        console.error("Playlist privée");
+      })
+    } else {
       socket.emit("erreur", "Mauvais lien");
       console.error("Mauvais lien");
-      socket.emit("gif-off");
+    }
+  });
+
+  app.get('/telecharger', async (req, res) => {
+    try {
+      let filename = __dirname + "/private/" + req.query.id + ".zip";
+
+      res.download(filename, "arthurdev.zip", (err) => {
+        if (err)
+          console.log(err);
+        if (fs.existsSync(`private/${req.query.id}`)) {
+          fs.rmSync(`private/${req.query.id}`, { recursive: true });
+          fs.rmSync(`private/${req.query.id}.zip`, { recursive: true });
+        }
+        socket.ready = true;
+      });
+    } catch (err) {
+      console.error(err);
     }
   });
 });
 
+// -- -- -- -- -- -- -- -- --  FONCTIONS  -- -- -- -- -- -- -- -- -- \\
 
-
-const telechargerFichier = (id, socket, nombre) => {
-  fs.mkdirSync(`private/${socket.id}`, { recursive: true });
+// Fonction permettant de télécharger un fichier.
+const telechargerFichier = (id, title, socket) => {
+  if (!fs.existsSync(`private/${socket.id}/`))
+    fs.mkdirSync(`private/${socket.id}/`);
   downloader_audio.outputPath = `private/${socket.id}`;
 
   // Télécharge la vidéo.
   downloader_audio.download(id);
 
-  // Data contient les infos sur le fichier téléchargé et envoie les infos au client.
-  downloader_audio.on("finished", (err, data) => {
-    // var data = fs.readFileSync("private/" + id + ".jpg");
-    // var img = Buffer.from(data).toString("base64");
-    // socket.emit("miniature", "data:image/png;base64," + img);
-    console.log("finished : ", data.videoTitle);
+  // Télécharge le thumbnail.
+  let image_options = {
+    url: "https://img.youtube.com/vi/" + id + "/hqdefault.jpg",
+    dest: "private/" + socket.id + "/" + title + ".jpg",
+  };
+  downloader_image.image(image_options).then(({ filename }) => {
+    console.log("Image sauvegardée : ", filename);
+  })
+    .catch((err) => console.error(err));
 
-    cpt_playlist--;
+  // Changement de la taille de la queue.
+  downloader_audio.on("queueSize", (size) => {
+    socket.emit("info", `Musiques restantes : ${size}`)
 
-    socket.emit("info", "il reste " + cpt_playlist/nombre + " musiques")
-    socket.emit("dl-update", data.videoTitle)
+    if (size == 0 && socket.ready) {
+      socket.ready = false;
+      socket.emit("gif-off");
 
-    console.log(cpt_playlist);
+      let folder = "private/" + socket.id;
 
-    if (cpt_playlist == 0) socket.emit("gif-off");
+      zipDossier(folder, folder + ".zip").then(() => {
+        socket.emit("zip-rd");
+      });
+    }
   });
 
+  // Pourcentage de progression.
   downloader_audio.on("progress", (progress) => {
     socket.emit("dl-update", Math.round(JSON.parse(JSON.stringify(progress)).progress.percentage) + "%");
   });
@@ -138,5 +161,18 @@ const telechargerFichier = (id, socket, nombre) => {
   });
 }
 
+// Fonction permettant de compresser le dossier.
+const zipDossier = (source, out) => {
+  const archive = archiver('zip', { zlib: { level: 9 } });
+  const stream = fs.createWriteStream(out);
 
-app.get("/telecharger", (req, res) => res.download("./file.pdf"));
+  return new Promise((resolve, reject) => {
+    archive.directory(source, false)
+      .on('error', err => reject(err))
+      .pipe(stream);
+
+    stream.on('close', () => resolve());
+    archive.finalize();
+  });
+}
+

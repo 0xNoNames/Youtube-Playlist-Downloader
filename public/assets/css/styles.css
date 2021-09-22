@@ -51,8 +51,9 @@ body {
   top: 5%;
   left: 50%;
   transform: translate(-50%, -5%);
-  color: rgb(255, 255, 0);
-  font-size: 1em;
+  color: rgb(255, 127, 127);
+  text-shadow: black 0 0 15px;
+  font-size: 1.5em;
 }
 
 #infoMessage {
@@ -60,23 +61,24 @@ body {
   top: 95%;
   left: 50%;
   transform: translate(-50%, -95%);
-  color: rgb(0, 255, 0);
-  font-size: 1em;
+  color: rgb(127, 253, 190);
+  text-shadow: black 0 0 15px;
+  font-size: 1.5srem;
 }
 
 #updateMessage {
   position: absolute;
   color: rgba(255, 255, 255, 0.5);
-  top: 60%;
+  top: 50%;
   left: 50%;
-  transform: translate(-50%, -60%);
+  transform: translate(-50%, -50%);
 }
 
 #loadingImg {
   position: absolute;
-  top: 70%;
+  top: 60%;
   left: 50%;
-  transform: translate(-50%, -70%);
+  transform: translate(-50%, -60%);
 }
 
 img {
